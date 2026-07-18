@@ -1,0 +1,438 @@
+// ShipFlow AI — database schema
+//
+// Two halves, kept deliberately separate:
+//   1. Auth tables (User, Session, Account, Verification) — owned by Better Auth.
+//      Field names/shapes follow Better Auth's Prisma adapter contract exactly.
+//      Don't rename these without re-running `npx @better-auth/cli generate` to check drift.
+//   2. Product tables — everything ShipFlow actually does: workspaces, PRDs,
+//      tasks, GitHub PRs, AI review runs, BYOK keys, billing.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTH (Better Auth core schema — see packages/db/README.md)
+// ============================================================================
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+
+  memberships      WorkspaceMember[]
+  invitesSent      Invite[]          @relation("InviteSender")
+  prdsAuthored     Prd[]             @relation("PrdAuthor")
+  reviewComments   ReviewComment[]
+  tasksAssigned    Task[]            @relation("TaskAssignee")
+  apiKeysAdded     ApiKey[]          @relation("ApiKeyCreator")
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// ============================================================================
+// PRODUCT ENUMS
+// ============================================================================
+
+/// Workspace-level permission role. Enforced server-side in packages/api/src/permissions.ts
+/// — the UI hides actions the role can't take, but the tRPC procedure is what actually blocks it.
+enum Role {
+  ADMIN
+  DEVELOPER
+  REVIEWER
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum PlanTier {
+  FREE
+  PRO
+}
+
+enum PrdStatus {
+  DRAFT // discovery chat still in progress
+  READY // structured PRD generated, tasks can be planned
+  ARCHIVED
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum PullRequestState {
+  OPEN
+  FIX_NEEDED // AI found blocking issues, waiting on new commits
+  AI_APPROVED // AI review passed, waiting on human approval
+  SHIPPED // human approved — the terminal "done" state
+  CLOSED
+}
+
+enum ReviewVerdict {
+  PENDING
+  RUNNING
+  PASSED
+  BLOCKING_ISSUES
+  SKIPPED_TOO_LARGE // diff exceeded the hard size limit — see packages/github/src/diff.ts
+  ERROR
+}
+
+enum CommentSeverity {
+  BLOCKING
+  SUGGESTION
+  NIT
+}
+
+enum AiProvider {
+  OPENAI
+  ANTHROPIC
+}
+
+// ============================================================================
+// WORKSPACE / MULTI-TENANCY / RBAC
+// ============================================================================
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members            WorkspaceMember[]
+  invites            Invite[]
+  prds               Prd[]
+  tasks              Task[]
+  apiKeys            ApiKey[]
+  githubInstallation GithubInstallation?
+  pullRequests       PullRequest[]
+  subscription       Subscription?
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        Role     @default(DEVELOPER)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+model Invite {
+  id          String       @id @default(cuid())
+  workspaceId String
+  email       String
+  role        Role         @default(DEVELOPER)
+  status      InviteStatus @default(PENDING)
+  token       String       @unique @default(cuid())
+  invitedById String
+  expiresAt   DateTime
+  createdAt   DateTime     @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("InviteSender", fields: [invitedById], references: [id])
+
+  @@unique([workspaceId, email])
+  @@map("invites")
+}
+
+// ============================================================================
+// DISCOVERY — raw request -> AI chat -> structured PRD
+// ============================================================================
+
+model Prd {
+  id          String    @id @default(cuid())
+  workspaceId String
+  authorId    String
+  title       String
+  rawRequest  String    @db.Text
+  status      PrdStatus @default(DRAFT)
+
+  // Structured output, generated once the discovery chat has enough signal.
+  // Kept as JSON (not normalized tables) because this is AI output the user
+  // hand-edits in place — see components/discovery/prd-preview.tsx.
+  problem     String? @db.Text
+  goals       Json? // string[]
+  userStories Json? // { asA: string; iWant: string; soThat: string }[]
+  edgeCases   Json? // string[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author    User         @relation("PrdAuthor", fields: [authorId], references: [id])
+  messages  PrdMessage[]
+  tasks     Task[]
+
+  @@index([workspaceId])
+  @@map("prds")
+}
+
+model PrdMessage {
+  id        String   @id @default(cuid())
+  prdId     String
+  role      String // 'user' | 'assistant'
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  prd Prd @relation(fields: [prdId], references: [id], onDelete: Cascade)
+
+  @@index([prdId])
+  @@map("prd_messages")
+}
+
+// ============================================================================
+// PLANNING — PRD -> tasks -> kanban
+// ============================================================================
+
+model Task {
+  id          String     @id @default(cuid())
+  workspaceId String
+  prdId       String?
+  title       String
+  description String?    @db.Text
+  status      TaskStatus @default(BACKLOG)
+  order       Int        @default(0)
+  assigneeId  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  prd          Prd?          @relation(fields: [prdId], references: [id])
+  assignee     User?         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  pullRequests PullRequest[]
+
+  @@index([workspaceId, status])
+  @@map("tasks")
+}
+
+// ============================================================================
+// GITHUB INTEGRATION
+// ============================================================================
+
+/// One GitHub App installation per workspace. accessTokenEnc holds an
+/// encrypted installation access token cache; installationId is what's
+/// actually used to mint fresh tokens via the GitHub App private key.
+model GithubInstallation {
+  id             String   @id @default(cuid())
+  workspaceId    String   @unique
+  installationId String   @unique
+  accountLogin   String
+  accountType    String // 'Organization' | 'User'
+  createdAt      DateTime @default(now())
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  repos     GithubRepo[]
+
+  @@map("github_installations")
+}
+
+model GithubRepo {
+  id             String   @id @default(cuid())
+  installationId String
+  owner          String
+  name           String
+  fullName       String   @unique
+  isActive       Boolean  @default(true) // AI review runs only on active repos
+  createdAt      DateTime @default(now())
+
+  installation GithubInstallation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  pullRequests PullRequest[]
+
+  @@map("github_repos")
+}
+
+model PullRequest {
+  id          String            @id @default(cuid())
+  workspaceId String
+  repoId      String
+  taskId      String?
+  number      Int
+  title       String
+  authorLogin String
+  headSha     String
+  baseSha     String
+  state       PullRequestState  @default(OPEN)
+  url         String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  shippedAt   DateTime?
+  shippedById String?
+
+  workspace Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  repo      GithubRepo  @relation(fields: [repoId], references: [id], onDelete: Cascade)
+  task      Task?       @relation(fields: [taskId], references: [id])
+  reviews   ReviewRun[]
+
+  @@unique([repoId, number])
+  @@index([workspaceId, state])
+  @@map("pull_requests")
+}
+
+// ============================================================================
+// AI REVIEW LOOP
+// ============================================================================
+
+/// One row per AI review pass (a PR can be re-reviewed after new commits —
+/// each push creates a new ReviewRun, not a new PullRequest).
+model ReviewRun {
+  id            String        @id @default(cuid())
+  pullRequestId String
+  headSha       String // which commit this run reviewed
+  verdict       ReviewVerdict @default(PENDING)
+  summary       String?       @db.Text
+  chunkCount    Int           @default(1)
+  diffLineCount Int           @default(0)
+  provider      AiProvider?
+  errorMessage  String?       @db.Text
+  createdAt     DateTime      @default(now())
+  completedAt   DateTime?
+
+  pullRequest PullRequest     @relation(fields: [pullRequestId], references: [id], onDelete: Cascade)
+  comments    ReviewComment[]
+
+  @@index([pullRequestId])
+  @@map("review_runs")
+}
+
+model ReviewComment {
+  id          String          @id @default(cuid())
+  reviewRunId String
+  filePath    String
+  line        Int?
+  severity    CommentSeverity
+  body        String          @db.Text
+  authorId    String? // null = posted by the AI reviewer
+  postedToGithub Boolean      @default(false)
+  createdAt   DateTime        @default(now())
+
+  reviewRun ReviewRun @relation(fields: [reviewRunId], references: [id], onDelete: Cascade)
+  author    User?     @relation(fields: [authorId], references: [id])
+
+  @@index([reviewRunId])
+  @@map("review_comments")
+}
+
+// ============================================================================
+// BYOK — bring your own AI provider key
+// ============================================================================
+
+/// Provider keys are AES-256-GCM encrypted with ENCRYPTION_KEY before storage
+/// (see packages/db/src/encryption.ts). keyLast4 is plaintext by design, purely
+/// for display ("sk-...ab12") so the full key never round-trips to the client.
+model ApiKey {
+  id          String     @id @default(cuid())
+  workspaceId String
+  provider    AiProvider
+  label       String // e.g. "Production key", user-defined
+  keyCiphertext String   @db.Text
+  keyIv       String
+  keyAuthTag  String
+  keyLast4    String
+  lastUsedAt  DateTime?
+  lastVerifiedAt DateTime?
+  createdAt   DateTime   @default(now())
+  createdById String
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("ApiKeyCreator", fields: [createdById], references: [id])
+
+  @@unique([workspaceId, provider])
+  @@map("api_keys")
+}
+
+// ============================================================================
+// BILLING
+// ============================================================================
+
+model Subscription {
+  id               String    @id @default(cuid())
+  workspaceId      String    @unique
+  tier             PlanTier  @default(FREE)
+  aiReviewsUsed    Int       @default(0) // resets each billing period
+  aiReviewsLimit   Int       @default(25) // FREE tier cap; PRO is effectively unlimited (soft cap)
+  razorpaySubId    String?
+  razorpayCustomerId String?
+  currentPeriodEnd DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}

@@ -1,0 +1,23 @@
+# Netlify deploy config for this Turborepo.
+#
+# The Next.js Runtime (@netlify/plugin-nextjs) auto-installs when Netlify
+# detects a Next.js app — you don't need to add it to package.json yourself.
+# This file's job is just telling Netlify WHERE the Next.js app lives
+# (apps/web, not the repo root) and making sure the Prisma client is
+# generated before `next build` runs (Next.js needs it at build time for
+# type-checking server components/route handlers that import it).
+
+[build]
+  base = "apps/web"
+  command = "npx prisma generate --schema=../../packages/db/prisma/schema.prisma && npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Turborepo + npm workspaces need the Node version bumped from Netlify's
+  # older default — 20 matches what this project was built and verified on.
+  NODE_VERSION = "20"
+
+# Server-only secrets (DATABASE_URL, BETTER_AUTH_SECRET, ENCRYPTION_KEY,
+# GITHUB_APP_*, INNGEST_*, RAZORPAY_*, RESEND_API_KEY) are NOT set here —
+# add them in Netlify's dashboard under Site settings -> Environment
+# variables, not in this file, since this file is committed to git.

@@ -1,0 +1,24 @@
+{
+  "name": "@shipflow/inngest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/client.ts",
+    "./functions": "./src/functions/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shipflow/db": "*",
+    "@shipflow/api": "*",
+    "@shipflow/github": "*",
+    "inngest": "4.12.1",
+    "ai": "7.0.28"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "^22.10.0"
+  }
+}

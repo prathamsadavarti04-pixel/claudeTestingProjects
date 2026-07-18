@@ -1,0 +1,22 @@
+{
+  "name": "@shipflow/github",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/client.ts",
+    "./webhook": "./src/webhook.ts",
+    "./diff": "./src/diff.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@octokit/app": "16.1.2",
+    "@octokit/webhooks-methods": "6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "^22.10.0"
+  }
+}

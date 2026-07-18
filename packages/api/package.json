@@ -1,0 +1,30 @@
+{
+  "name": "@shipflow/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/root.ts",
+    "./trpc": "./src/trpc.ts",
+    "./permissions": "./src/permissions.ts",
+    "./lib/ai-provider": "./src/lib/ai-provider.ts",
+    "./lib/api-keys": "./src/lib/api-keys.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shipflow/db": "*",
+    "@shipflow/github": "*",
+    "@trpc/server": "11.18.0",
+    "zod": "4.4.3",
+    "superjson": "2.2.6",
+    "ai": "7.0.28",
+    "@ai-sdk/openai": "4.0.14",
+    "@ai-sdk/anthropic": "4.0.15"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "@types/node": "^22.10.0"
+  }
+}

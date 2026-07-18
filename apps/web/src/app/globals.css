@@ -1,0 +1,40 @@
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-matcha/theme.css";
+@import "@astryxdesign/core/tailwind-theme.css";
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/*
+ * ShipFlow's own additions, layered last so they win the cascade without
+ * needing !important anywhere.
+ *
+ * Font strategy (see ARCHITECTURE.md "Design decisions"):
+ *  - Product UI uses Matcha's own type system untouched (DM Sans) — the
+ *    150+ Astryx components were designed and tested against it.
+ *  - The marketing site borrows two more voices, used sparingly: a serif
+ *    for the handful of big display headlines, and a monospace for
+ *    anything that's literally code (diffs, PR numbers, file paths) —
+ *    grounding the type system in what this product actually does.
+ *  - Both are system font stacks, not webfonts: no render-blocking
+ *    network request, nothing to flash-of-unstyled-text, works offline.
+ */
+@theme inline {
+  --font-display: ui-serif, Charter, "Iowan Old Style", "Palatino Linotype", Georgia, Cambria, serif;
+  --font-mono-code: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+}
+
+body {
+  background-color: var(--color-background-body);
+}
+
+/* Astryx's focus ring uses :focus-visible already; this just makes sure
+   anchor-wrapped custom marketing elements (not Astryx components) get one too. */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
