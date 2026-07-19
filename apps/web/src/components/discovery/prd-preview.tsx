@@ -16,9 +16,9 @@ type UserStory = { asA: string; iWant: string; soThat: string };
 export function PrdPreview({ prd, workspaceId }: { prd: Prd; workspaceId: string }) {
   const utils = trpc.useUtils();
   const [problem, setProblem] = useState(prd.problem ?? "");
-  const [goals, setGoals] = useState<string[]>((prd.goals as string[]) ?? []);
-  const [edgeCases, setEdgeCases] = useState<string[]>((prd.edgeCases as string[]) ?? []);
-  const [userStories, setUserStories] = useState<UserStory[]>((prd.userStories as UserStory[]) ?? []);
+  const [goals, setGoals] = useState<string[]>((prd.goals as unknown as string[]) ?? []);
+  const [edgeCases, setEdgeCases] = useState<string[]>((prd.edgeCases as unknown as string[]) ?? []);
+  const [userStories, setUserStories] = useState<UserStory[]>((prd.userStories as unknown as UserStory[]) ?? []);
 
   const update = trpc.prd.update.useMutation({
     onSuccess: () => utils.prd.get.invalidate({ workspaceId, prdId: prd.id }),

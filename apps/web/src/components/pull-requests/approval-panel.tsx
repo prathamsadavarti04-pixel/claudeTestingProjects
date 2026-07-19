@@ -58,7 +58,9 @@ export function ApprovalPanel({
             size="sm"
             icon={<CheckCircle2 className="h-3.5 w-3.5" />}
             isLoading={approve.isPending}
-            clickAction={() => approve.mutateAsync({ workspaceId, pullRequestId })}
+            clickAction={async () => {
+              await approve.mutateAsync({ workspaceId, pullRequestId });
+            }}
           />
         }
       />

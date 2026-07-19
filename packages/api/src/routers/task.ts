@@ -92,22 +92,24 @@ export const taskRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Task not found." });
       }
 
-      const columnTasks: Array<{ id: string; status: string; order: number }> = await ctx.prisma.task.findMany({
+      const columnTasks = await ctx.prisma.task.findMany({
         where: { workspaceId: input.workspaceId, status: input.status, id: { not: input.taskId } },
         orderBy: { order: "asc" },
+        select: { id: true },
       });
 
+      // Only the ordered list of ids is needed from here — building it this
+      // way (rather than spreading the full `task` row into a typed array)
+      // sidesteps any ambiguity about excess-property checks on the spread.
+      const orderedIds: string[] = columnTasks.map((t: { id: string }) => t.id);
       const insertAt = input.beforeTaskId
-        ? Math.max(
-            0,
-            columnTasks.findIndex((t: { id: string }) => t.id === input.beforeTaskId)
-          )
-        : columnTasks.length;
-      columnTasks.splice(insertAt, 0, { ...task, status: input.status });
+        ? Math.max(0, orderedIds.indexOf(input.beforeTaskId))
+        : orderedIds.length;
+      orderedIds.splice(insertAt, 0, input.taskId);
 
       await ctx.prisma.$transaction(
-        columnTasks.map((t: { id: string }, i: number) =>
-          ctx.prisma.task.update({ where: { id: t.id }, data: { status: input.status, order: i } })
+        orderedIds.map((id, i) =>
+          ctx.prisma.task.update({ where: { id }, data: { status: input.status, order: i } })
         )
       );
 
@@ -142,7 +144,7 @@ export const taskRouter = createTRPCRouter({
         });
       }
 
-      const stories = prd.userStories as Array<{ asA: string; iWant: string; soThat: string }>;
+      const stories = prd.userStories as unknown as Array<{ asA: string; iWant: string; soThat: string }>;
       const maxOrder = await ctx.prisma.task.aggregate({
         where: { workspaceId: input.workspaceId, status: "BACKLOG" },
         _max: { order: true },

@@ -6,11 +6,10 @@ const nextConfig = {
   // a plain runtime `require`/`import` instead.
   serverExternalPackages: ["@prisma/client", "@octokit/app"],
 
-  eslint: {
-    // Type-checking runs separately via `npm run type-check`; don't block
-    // `next build` on lint so CI stages stay independent.
-    ignoreDuringBuilds: true,
-  },
+  // No `eslint` key here on purpose: Next.js 16 removed `next build`'s
+  // built-in lint step entirely (not just this config option — linting
+  // during build is gone, full stop). Run `npm run lint` separately
+  // (CI, pre-commit, or manually) if you want it enforced.
 };
 
 module.exports = nextConfig;

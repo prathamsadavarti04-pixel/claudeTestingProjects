@@ -48,9 +48,9 @@ export function DiscoveryDetailClient({
               icon={<Wand2 className="h-3.5 w-3.5" />}
               isLoading={generateStructured.isPending}
               isDisabled={!canGenerate}
-              clickAction={() =>
-                generateStructured.mutateAsync({ workspaceId, prdId: initialPrd.id, provider: defaultProvider })
-              }
+              clickAction={async () => {
+                await generateStructured.mutateAsync({ workspaceId, prdId: initialPrd.id, provider: defaultProvider });
+              }}
             />
           )}
         </div>

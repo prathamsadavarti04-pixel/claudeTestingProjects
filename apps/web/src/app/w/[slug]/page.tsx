@@ -26,7 +26,7 @@ export default async function WorkspaceDashboardPage({ params }: { params: Promi
   ]);
 
   const tasksByStatus: Record<string, number> = {};
-  for (const t of tasks as Array<{ status: string }>) {
+  for (const t of tasks as unknown as Array<{ status: string }>) {
     tasksByStatus[t.status] = (tasksByStatus[t.status] ?? 0) + 1;
   }
 

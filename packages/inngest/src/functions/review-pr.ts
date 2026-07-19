@@ -152,8 +152,8 @@ export const reviewPullRequest = inngest.createFunction(
     const prdContext = [
       `# PRD: ${prd.title}`,
       `## Problem\n${prd.problem ?? ""}`,
-      `## Goals\n${((prd.goals as string[]) ?? []).map((g) => `- ${g}`).join("\n")}`,
-      `## Edge cases the implementation must handle\n${((prd.edgeCases as string[]) ?? []).map((e) => `- ${e}`).join("\n")}`,
+      `## Goals\n${((prd.goals as unknown as string[]) ?? []).map((g) => `- ${g}`).join("\n")}`,
+      `## Edge cases the implementation must handle\n${((prd.edgeCases as unknown as string[]) ?? []).map((e) => `- ${e}`).join("\n")}`,
     ].join("\n\n");
 
     // Each chunk is its own step — Inngest retries a failed step (e.g. a

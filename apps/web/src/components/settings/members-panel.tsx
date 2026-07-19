@@ -105,7 +105,7 @@ export function MembersPanel({
                       isLabelHidden
                       options={ROLE_OPTIONS}
                       value={m.role}
-                      onChange={(v) => updateRole.mutate({ workspaceId, memberId: m.id, role: v as Role })}
+                      onChange={(v) => updateRole.mutate({ workspaceId, memberId: m.id, role: v as unknown as Role })}
                     />
                   </div>
                 ) : (

@@ -13,9 +13,11 @@
   publish = ".next"
 
 [build.environment]
-  # Turborepo + npm workspaces need the Node version bumped from Netlify's
-  # older default — 20 matches what this project was built and verified on.
-  NODE_VERSION = "20"
+  # Turborepo + npm workspaces need a newer Node than Netlify's older
+  # default. 22, not 20: `ai@7` and one of Inngest's dependencies
+  # (kysely) both require Node >=22 — a plain "LTS-sounding" version
+  # isn't enough, this is a real floor from the dependency tree.
+  NODE_VERSION = "22"
 
 # Server-only secrets (DATABASE_URL, BETTER_AUTH_SECRET, ENCRYPTION_KEY,
 # GITHUB_APP_*, INNGEST_*, RAZORPAY_*, RESEND_API_KEY) are NOT set here —

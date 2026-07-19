@@ -118,7 +118,7 @@ export const workspaceProcedure = t.procedure.use(isWorkspaceMember);
  */
 export function requirePermission(action: Action) {
   return t.middleware(async ({ ctx, next }) => {
-    const role = (ctx as { role?: Role }).role;
+    const role = (ctx as unknown as { role?: Role }).role;
     if (!role || !can(role, action)) {
       throw new TRPCError({
         code: "FORBIDDEN",
