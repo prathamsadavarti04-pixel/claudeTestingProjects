@@ -1,10 +1,6 @@
 "use client";
 
-// In src/components/kanban/board.tsx (or your kanban types file)
-import type { RouterOutputs } from "@/lib/trpc/types"; // Adjust import path to your tRPC types
 
-// Infers exact Prisma return types including enums and relations
-type Task = RouterOutputs["task"]["list"][number];
 import { useMemo, useState } from "react";
 import {
   DndContext,
