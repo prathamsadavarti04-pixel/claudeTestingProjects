@@ -52,3 +52,5 @@ export function PullRequestList({ slug, pullRequests }: { slug: string; pullRequ
     </div>
   );
 }
+
+

@@ -32,6 +32,23 @@ export const taskRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Foreign keys alone don't express tenant ownership. Validate optional
+      // relations explicitly so a workspace member cannot attach a task to a
+      // PRD or assignee belonging to another workspace.
+      if (input.prdId) {
+        const prd = await ctx.prisma.prd.findUnique({ where: { id: input.prdId }, select: { workspaceId: true } });
+        if (!prd || prd.workspaceId !== input.workspaceId) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "PRD not found in this workspace." });
+        }
+      }
+      if (input.assigneeId) {
+        const assignee = await ctx.prisma.workspaceMember.findUnique({
+          where: { workspaceId_userId: { workspaceId: input.workspaceId, userId: input.assigneeId } },
+          select: { id: true },
+        });
+        if (!assignee) throw new TRPCError({ code: "NOT_FOUND", message: "Assignee is not a workspace member." });
+      }
+
       const maxOrder = await ctx.prisma.task.aggregate({
         where: { workspaceId: input.workspaceId, status: input.status },
         _max: { order: true },
@@ -65,6 +82,13 @@ export const taskRouter = createTRPCRouter({
       const task = await ctx.prisma.task.findUnique({ where: { id: taskId } });
       if (!task || task.workspaceId !== workspaceId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Task not found." });
+      }
+      if (rest.assigneeId !== undefined && rest.assigneeId !== null) {
+        const assignee = await ctx.prisma.workspaceMember.findUnique({
+          where: { workspaceId_userId: { workspaceId, userId: rest.assigneeId } },
+          select: { id: true },
+        });
+        if (!assignee) throw new TRPCError({ code: "NOT_FOUND", message: "Assignee is not a workspace member." });
       }
       return ctx.prisma.task.update({ where: { id: taskId }, data: rest });
     }),
@@ -145,6 +169,14 @@ export const taskRouter = createTRPCRouter({
       }
 
       const stories = prd.userStories as unknown as Array<{ asA: string; iWant: string; soThat: string }>;
+      // Generating twice should not silently duplicate every planned task.
+      const existingGeneratedTasks = await ctx.prisma.task.count({ where: { workspaceId: input.workspaceId, prdId: prd.id } });
+      if (existingGeneratedTasks > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Tasks have already been generated for this PRD.",
+        });
+      }
       const maxOrder = await ctx.prisma.task.aggregate({
         where: { workspaceId: input.workspaceId, status: "BACKLOG" },
         _max: { order: true },
@@ -169,3 +201,5 @@ export const taskRouter = createTRPCRouter({
       return { created: created.length };
     }),
 });
+
+

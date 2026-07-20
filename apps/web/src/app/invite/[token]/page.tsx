@@ -25,3 +25,5 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
   return <AcceptInviteClient token={token} invite={invite} currentEmail={session.user.email} />;
 }
+
+

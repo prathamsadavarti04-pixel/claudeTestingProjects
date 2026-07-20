@@ -17,3 +17,5 @@ export default async function GeneralSettingsPage({ params }: { params: Promise<
     </div>
   );
 }
+
+

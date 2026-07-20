@@ -27,3 +27,5 @@ npm run db:studio     # Prisma Studio, a GUI for the database
 keys. It's deliberately small and dependency-free (just Node's built-in
 `crypto`) — see the file's own comments for the exact rotation story if
 `ENCRYPTION_KEY` ever needs to change.
+
+

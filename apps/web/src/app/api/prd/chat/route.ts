@@ -1,4 +1,5 @@
 import { streamText } from "ai";
+import { z } from "zod";
 import { prisma } from "@shipflow/db";
 import { getModel } from "@shipflow/api/lib/ai-provider";
 import { getDecryptedKey } from "@shipflow/api/lib/api-keys";
@@ -18,11 +19,15 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { workspaceId, prdId, message } = (await req.json()) as {
-    workspaceId: string;
-    prdId: string;
-    message: string;
-  };
+  const payload = z
+    .object({
+      workspaceId: z.string().min(1),
+      prdId: z.string().min(1),
+      message: z.string().trim().min(1).max(12_000),
+    })
+    .safeParse(await req.json().catch(() => null));
+  if (!payload.success) return new Response("Invalid chat request.", { status: 400 });
+  const { workspaceId, prdId, message } = payload.data;
 
   const membership = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId: session.user.id } },
@@ -65,3 +70,5 @@ export async function POST(req: Request) {
   // exact version-specific wire format as a dependency.
   return result.toTextStreamResponse();
 }
+
+

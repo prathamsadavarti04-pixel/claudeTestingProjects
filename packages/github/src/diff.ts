@@ -66,3 +66,5 @@ export function formatDiffChunkForPrompt(chunk: DiffChunk): string {
     .map((f) => `### ${f.filename} (${f.status}, +${f.additions}/-${f.deletions})\n\`\`\`diff\n${f.patch}\n\`\`\``)
     .join("\n\n");
 }
+
+

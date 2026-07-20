@@ -72,3 +72,5 @@ function CellIcon({ value }: { value: Cell }) {
   if (value === "partial") return <Minus className="h-4.5 w-4.5 text-[var(--color-icon-orange)]" strokeWidth={2.5} />;
   return <X className="h-4.5 w-4.5 text-[var(--color-icon-disabled)]" strokeWidth={2.5} />;
 }
+
+

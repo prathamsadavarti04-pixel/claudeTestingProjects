@@ -75,3 +75,5 @@ Two halves, deliberately kept separate in `packages/db/prisma/schema.prisma`:
 - Task reordering renumbers the whole destination column on every drag rather than using fractional indices — fine at real kanban-board scale, would need revisiting well before hundreds of tasks per column.
 - A workspace with both an OpenAI and an Anthropic key configured always uses whichever was added first for AI review; there's no per-workspace "default provider" selector yet.
 - Razorpay billing is schema-and-UI-complete but checkout is stubbed pending real merchant keys (see `packages/api/src/routers/billing.ts`).
+
+

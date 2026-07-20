@@ -146,3 +146,5 @@ export const prdRouter = createTRPCRouter({
       return ctx.prisma.prd.update({ where: { id: input.prdId }, data: { status: "ARCHIVED" } });
     }),
 });
+
+

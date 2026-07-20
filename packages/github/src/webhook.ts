@@ -53,3 +53,5 @@ export function shouldTriggerReview(payload: GithubPullRequestPayload): boolean 
   if (payload.pull_request.state !== "open") return false;
   return PR_ACTIONS_THAT_TRIGGER_REVIEW.has(payload.action);
 }
+
+

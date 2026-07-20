@@ -41,9 +41,12 @@ export async function POST(req: Request) {
     where: { repoId_number: { repoId: repo.id, number: payload.pull_request.number } },
     update: {
       title: payload.pull_request.title,
+      authorLogin: payload.pull_request.user.login,
       headSha: payload.pull_request.head.sha,
+      baseSha: payload.pull_request.base.sha,
+      url: payload.pull_request.html_url,
       state: "OPEN",
-    },
+    }, 
     create: {
       workspaceId: repo.installation.workspaceId,
       repoId: repo.id,
@@ -61,3 +64,5 @@ export async function POST(req: Request) {
 
   return new Response("ok", { status: 200 });
 }
+
+

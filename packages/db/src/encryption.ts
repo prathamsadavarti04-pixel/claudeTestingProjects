@@ -73,3 +73,5 @@ export function decryptSecret(payload: EncryptedPayload): string {
 export function lastFour(secret: string): string {
   return secret.slice(-4);
 }
+
+

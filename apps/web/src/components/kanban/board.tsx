@@ -1,5 +1,5 @@
 "use client";
-// hii
+
 import { useMemo, useState } from "react";
 import {
   DndContext,
@@ -13,21 +13,12 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { trpc } from "@/lib/trpc/react";
+import type { RouterOutputs } from "@/lib/trpc/types";
 import { KanbanColumn } from "./column";
 import { TaskCard } from "./task-card";
 import { NewTaskDialog } from "./new-task-dialog";
 
-export interface Task {
-  id: string;
-  title: string;
-  description: string | null;
-  status: "BACKLOG" | "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
-  order: number;
-  assigneeId: string | null;
-  assignee: { id: string; name: string; image: string | null } | null;
-  prd: { id: string; title: string } | null;
-  pullRequests: Array<{ id: string; number: number; state: string; url: string }>;
-}
+export type Task = RouterOutputs["task"]["list"][number];
 
 const COLUMNS = [
   { status: "BACKLOG", label: "Backlog" },
@@ -39,14 +30,14 @@ const COLUMNS = [
 
 export function KanbanBoard({ workspaceId, canEdit }: { workspaceId: string; canEdit: boolean }) {
   const utils = trpc.useUtils();
-  const { data: tasks } = trpc.task.list.useQuery({ workspaceId }) as unknown as { data: Task[] | undefined };
+  const { data: tasks } = trpc.task.list.useQuery({ workspaceId });
   const moveTask = trpc.task.move.useMutation({
     onMutate: async (input) => {
       await utils.task.list.cancel({ workspaceId });
       const prev = utils.task.list.getData({ workspaceId });
-      utils.task.list.setData({ workspaceId }, (old: Task[] | undefined) => {
+      utils.task.list.setData({ workspaceId }, (old) => {
         if (!old) return old;
-        return old.map((t: Task) => (t.id === input.taskId ? { ...t, status: input.status } : t));
+        return old.map((t) => (t.id === input.taskId ? { ...t, status: input.status } : t));
       });
       return { prev };
     },
@@ -124,3 +115,5 @@ export function KanbanBoard({ workspaceId, canEdit }: { workspaceId: string; can
     </div>
   );
 }
+
+

@@ -27,3 +27,5 @@ export function WorkspaceSwitcher({ currentSlug, currentName }: { currentSlug: s
     />
   );
 }
+
+

@@ -30,3 +30,5 @@ export const DEFAULT_MODEL_LABEL: Record<AiProvider, string> = {
   OPENAI: "gpt-4.1-mini",
   ANTHROPIC: "claude-sonnet-4-6",
 };
+
+

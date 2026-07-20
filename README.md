@@ -10,7 +10,7 @@ This is a real, working Turborepo monorepo — not a mockup. See **"What's fully
 # 1. Start Postgres
 docker compose up -d
 
-# 2. Configure env — this file is read by the Prisma CLI (db:generate, db:push)
+# 2. Configure env
 cp .env.example .env
 # Fill in BETTER_AUTH_SECRET and ENCRYPTION_KEY at minimum:
 #   openssl rand -base64 32   (run twice, once per value)
@@ -20,11 +20,7 @@ npm install
 npm run db:generate
 npm run db:push
 
-# 4. Next.js reads its own .env, not the root one — copy the same file so
-#    `npm run dev` has what it needs too
-cp .env apps/web/.env
-
-# 5. Run it
+# 4. Run it
 npm run dev
 ```
 
@@ -82,3 +78,5 @@ None of this is unique to ShipFlow — it's the standard shape of "Next.js + Pos
 The UI is built on [Astryx](https://github.com/facebook/astryx), Meta's newly open-sourced React design system (`@astryxdesign/core` + the `theme-matcha` theme) rather than hand-rolled components — real accessible components, 150+ of them, instead of another shadcn clone. The `matcha` theme's earthy green/cream palette is what gives this its visual identity.
 
 One honest limitation: this was built in a sandboxed environment without network access to Prisma's engine-binary CDN, so `prisma generate` couldn't be run or verified here. The first real deploy caught what that cost: a handful of places where a function was passed to a `clickAction` prop without discarding its return value — invisible with Prisma's client stubbed as `any` (which is bidirectionally compatible with everything), real once actual types existed. Once one showed up in a build log, I went back through the whole codebase for the same category — every `clickAction`, every cast from a Prisma `Json` field to a concrete array type, every direct type assertion touching a Prisma-derived shape — and fixed what that specific failure mode could hit, not just the one reported instance. `npm run db:generate` is still the first thing to run and watch closely; that's the one verification step this build genuinely couldn't do for you.
+
+

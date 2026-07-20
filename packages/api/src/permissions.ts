@@ -52,3 +52,5 @@ export function can(role: Role, action: Action): boolean {
 export function permissionsFor(role: Role): Action[] {
   return Array.from(PERMISSIONS[role] ?? []);
 }
+
+

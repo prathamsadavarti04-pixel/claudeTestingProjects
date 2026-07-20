@@ -27,8 +27,17 @@ export function PrdPreview({ prd, workspaceId }: { prd: Prd; workspaceId: string
     onSuccess: () => utils.task.list.invalidate({ workspaceId }),
   });
 
-  function save() {
-    update.mutate({ workspaceId, prdId: prd.id, problem, goals, edgeCases, userStories });
+  // State setters are asynchronous. Accepting a patch here prevents list edits
+  // from saving the *previous* array value when the user changes an item.
+  function save(patch: Partial<{ problem: string; goals: string[]; edgeCases: string[]; userStories: UserStory[] }> = {}) {
+    update.mutate({
+      workspaceId,
+      prdId: prd.id,
+      problem: patch.problem ?? problem,
+      goals: patch.goals ?? goals,
+      edgeCases: patch.edgeCases ?? edgeCases,
+      userStories: patch.userStories ?? userStories,
+    });
   }
 
   return (
@@ -53,11 +62,19 @@ export function PrdPreview({ prd, workspaceId }: { prd: Prd; workspaceId: string
       <div>
         <TextArea label="Problem" value={problem} onChange={setProblem} rows={3} />
         <div className="mt-2 grid w-fit">
-          <Button label="Save" variant="secondary" size="sm" isLoading={update.isPending} onClick={save} />
+          <Button label="Save" variant="secondary" size="sm" isLoading={update.isPending} onClick={() => save()} />
         </div>
       </div>
 
-      <EditableList title="Goals" items={goals} onChange={(v) => { setGoals(v); save(); }} placeholder="A concrete, measurable goal" />
+      <EditableList
+        title="Goals"
+        items={goals}
+        onChange={(v) => {
+          setGoals(v);
+          save({ goals: v });
+        }}
+        placeholder="A concrete, measurable goal"
+      />
 
       <div>
         <p className="mb-2 text-[13px] font-medium text-[var(--color-text-secondary)]">User stories</p>
@@ -76,7 +93,10 @@ export function PrdPreview({ prd, workspaceId }: { prd: Prd; workspaceId: string
       <EditableList
         title="Edge cases"
         items={edgeCases}
-        onChange={(v) => { setEdgeCases(v); save(); }}
+        onChange={(v) => {
+          setEdgeCases(v);
+          save({ edgeCases: v });
+        }}
         placeholder="A specific failure mode an engineer could miss"
       />
     </div>
@@ -133,3 +153,5 @@ function EditableList({
     </div>
   );
 }
+
+

@@ -34,3 +34,5 @@ export function SettingsTabs({ slug }: { slug: string }) {
     </div>
   );
 }
+
+

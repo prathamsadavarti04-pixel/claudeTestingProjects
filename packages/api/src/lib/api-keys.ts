@@ -24,3 +24,5 @@ export async function getDecryptedKey(
   }
   return decryptSecret({ ciphertext: row.keyCiphertext, iv: row.keyIv, authTag: row.keyAuthTag });
 }
+
+
