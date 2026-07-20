@@ -12,8 +12,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Migrations/db push go through PgBouncer-style poolers (Neon, Supabase)
+  // badly - pooled connections in transaction mode can throw "prepared
+  // statement already exists" mid-migration. Only the CLI (generate/push/
+  // migrate) reads this; the running app never does. If your Postgres has
+  // no pooler in front of it (e.g. the docker-compose one), set DIRECT_URL
+  // to the exact same value as DATABASE_URL rather than leaving it unset.
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================================================

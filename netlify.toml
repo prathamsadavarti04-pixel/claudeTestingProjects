@@ -19,7 +19,11 @@
   # isn't enough, this is a real floor from the dependency tree.
   NODE_VERSION = "22"
 
-# Server-only secrets (DATABASE_URL, BETTER_AUTH_SECRET, ENCRYPTION_KEY,
-# GITHUB_APP_*, INNGEST_*, RAZORPAY_*, RESEND_API_KEY) are NOT set here —
-# add them in Netlify's dashboard under Site settings -> Environment
-# variables, not in this file, since this file is committed to git.
+# Server-only secrets (DATABASE_URL, DIRECT_URL, BETTER_AUTH_SECRET,
+# ENCRYPTION_KEY, GITHUB_APP_*, INNGEST_*, RAZORPAY_*, RESEND_API_KEY) are
+# NOT set here — add them in Netlify's dashboard under Site configuration ->
+# Environment variables, not in this file, since this file is committed to
+# git. DIRECT_URL can just be the same value as DATABASE_URL here — the
+# build only runs `prisma generate` (schema shape only, no real connection
+# needed), never `db push`/migrate, so which one it points to doesn't
+# actually matter at build time. It matters when YOU run db:push locally.

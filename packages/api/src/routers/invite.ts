@@ -101,6 +101,20 @@ export const inviteRouter = createTRPCRouter({
     const invite = await ctx.prisma.invite.findUnique({ where: { token: input.token } });
     if (!invite) throw new TRPCError({ code: "NOT_FOUND", message: "This invite link isn't valid." });
     if (invite.status !== "PENDING") {
+      // Not necessarily an error: if this is a double-submitted request (e.g.
+      // a double-click) that lost the race to an identical concurrent one,
+      // the invite is already ACCEPTED and the user is already a member —
+      // send them on rather than showing an error for something that
+      // actually succeeded.
+      const workspace = await ctx.prisma.workspace.findUnique({ where: { id: invite.workspaceId } });
+      const alreadyMember =
+        workspace &&
+        (await ctx.prisma.workspaceMember.findUnique({
+          where: { workspaceId_userId: { workspaceId: invite.workspaceId, userId: ctx.user.id } },
+        }));
+      if (invite.status === "ACCEPTED" && alreadyMember && workspace) {
+        return { workspaceSlug: workspace.slug };
+      }
       throw new TRPCError({ code: "BAD_REQUEST", message: "This invite has already been used or revoked." });
     }
     if (invite.expiresAt < new Date()) {
@@ -113,14 +127,25 @@ export const inviteRouter = createTRPCRouter({
       });
     }
 
-    const [workspace] = await ctx.prisma.$transaction([
-      ctx.prisma.workspace.findUniqueOrThrow({ where: { id: invite.workspaceId } }),
-      ctx.prisma.workspaceMember.create({
-        data: { workspaceId: invite.workspaceId, userId: ctx.user.id, role: invite.role },
-      }),
-      ctx.prisma.invite.update({ where: { id: invite.id }, data: { status: "ACCEPTED" } }),
-    ]);
-
-    return { workspaceSlug: workspace.slug };
+    try {
+      const [workspace] = await ctx.prisma.$transaction([
+        ctx.prisma.workspace.findUniqueOrThrow({ where: { id: invite.workspaceId } }),
+        ctx.prisma.workspaceMember.create({
+          data: { workspaceId: invite.workspaceId, userId: ctx.user.id, role: invite.role },
+        }),
+        ctx.prisma.invite.update({ where: { id: invite.id }, data: { status: "ACCEPTED" } }),
+      ]);
+      return { workspaceSlug: workspace.slug };
+    } catch (err) {
+      // P2002 = unique constraint violation. The only one that can fire here
+      // is workspace_members(workspaceId, userId) — meaning a concurrent
+      // duplicate request already won this exact race. Same as above: that's
+      // a success, not an error, from this user's point of view.
+      if (err && typeof err === "object" && "code" in err && err.code === "P2002") {
+        const workspace = await ctx.prisma.workspace.findUniqueOrThrow({ where: { id: invite.workspaceId } });
+        return { workspaceSlug: workspace.slug };
+      }
+      throw err;
+    }
   }),
 });

@@ -10,7 +10,7 @@ This is a real, working Turborepo monorepo — not a mockup. See **"What's fully
 # 1. Start Postgres
 docker compose up -d
 
-# 2. Configure env
+# 2. Configure env — this file is read by the Prisma CLI (db:generate, db:push)
 cp .env.example .env
 # Fill in BETTER_AUTH_SECRET and ENCRYPTION_KEY at minimum:
 #   openssl rand -base64 32   (run twice, once per value)
@@ -20,7 +20,11 @@ npm install
 npm run db:generate
 npm run db:push
 
-# 4. Run it
+# 4. Next.js reads its own .env, not the root one — copy the same file so
+#    `npm run dev` has what it needs too
+cp .env apps/web/.env
+
+# 5. Run it
 npm run dev
 ```
 
