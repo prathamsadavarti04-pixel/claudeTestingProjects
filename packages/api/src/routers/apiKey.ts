@@ -40,7 +40,7 @@ export const apiKeyRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       try {
         const model = getModel(input.provider, input.key);
-        await generateText({ model, prompt: "Reply with exactly: OK", maxOutputTokens: 5 });
+        await generateText({ model, prompt: "Reply with exactly: OK", maxOutputTokens: 16 });
         return { valid: true as const };
       } catch (err) {
         return {
