@@ -12,23 +12,30 @@ import type { AiProvider } from "@shipflow/db";
 export function getModel(provider: AiProvider, apiKey: string, modelId?: string) {
   switch (provider) {
     case "OPENAI": {
-      const openai = createOpenAI({ apiKey });
+      // Explicitly use OpenAI's official API. This prevents Netlify's
+      // automatically injected AI Gateway URL from intercepting BYOK calls.
+      const openai = createOpenAI({
+        apiKey,
+        baseURL: "https://api.openai.com/v1",
+      });
+
       return openai(modelId ?? "gpt-4.1-mini");
     }
+
     case "ANTHROPIC": {
-      const anthropic = createAnthropic({ apiKey });
+      // Explicitly use Anthropic's official API for the same reason.
+      const anthropic = createAnthropic({
+        apiKey,
+        baseURL: "https://api.anthropic.com/v1",
+      });
+
       return anthropic(modelId ?? "claude-sonnet-4-6");
     }
+
     default: {
       const exhaustive: never = provider;
       throw new Error(`Unsupported AI provider: ${exhaustive}`);
     }
   }
 }
-
-export const DEFAULT_MODEL_LABEL: Record<AiProvider, string> = {
-  OPENAI: "gpt-4.1-mini",
-  ANTHROPIC: "claude-sonnet-4-6",
-};
-
 
